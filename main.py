@@ -1,10 +1,11 @@
-from math import sqrt
-import numpy as np
 import random
-import svgwrite
-import utils
+
+import numpy as np
 import pandas as pd
 import quantumrandom as qr
+import svgwrite
+
+import utils
 
 """DATA"""
 colours = pd.read_excel('DATA.xlsx', sheet_name='Sheet1')
@@ -13,28 +14,22 @@ colour_names = colours['SVG name']
 patterns = pd.read_excel('DATA.xlsx', sheet_name='Sheet2')
 pattern_list = np.array(utils.ratio(patterns['Pattern'], patterns['Numbers']))
 
-phi = (1 + sqrt(5)) / 2
 length = 1e3
 svg_size_w = svg_size_h = length
 length_array = np.array([1.0] + [length / n for n in range(1, 101)])
-eye_radius = 0.5 * (phi - 1) * length
-eye_sqrt2 = eye_radius / sqrt(2)
 
 
 def run(file_name, choice):
     file_name = f'svgs\\{file_name}.svg'
     if choice in {'y', 'yes'}:
         random.seed(qr.randint(1, 5_000_000_000))
-        """Canvas"""
-        # ############################################################################################################ #
+        # Canvas ##################################################################################################### #
         dwg = svgwrite.Drawing(file_name, (svg_size_w, svg_size_h), profile='full', debug=True)
         dwg.viewbox(-svg_size_w / 2, -svg_size_h / 2, svg_size_w, svg_size_h)
-        # ############################################################################################################ #
-        """Background"""
+        # Background ################################################################################################# #
         background_fill = random.choice(colour_list[:-20])
         dwg.add(dwg.rect(insert=(-length_array[2], -length_array[2]), size=('100%', '100%'), fill=background_fill))
-        # ############################################################################################################ #
-        """Pattern Choices"""
+        # Pattern Choices ############################################################################################ #
         pattern_choice = random.choice(pattern_list)
         pattern_choice_col = [x for x in colour_list[:-20] if x != background_fill]
         if pattern_choice == 'Hilbert':
@@ -63,16 +58,13 @@ def run(file_name, choice):
             dwg.add(pl)
     else:
         iterations = int(input('How many iterations do you need?'))
-        """Canvas"""
-        # ############################################################################################################ #
+        # Canvas ##################################################################################################### #
         dwg = svgwrite.Drawing(file_name, (svg_size_w, svg_size_h), profile='full', debug=True)
         dwg.viewbox(-svg_size_w / 2, -svg_size_h / 2, svg_size_w, svg_size_h)
-        # ############################################################################################################ #
-        """Background"""
+        # Background ################################################################################################# #
         background_fill = input('What colour background do you want?')
         dwg.add(dwg.rect(insert=(-length_array[2], -length_array[2]), size=('100%', '100%'), fill=background_fill))
-        # ############################################################################################################ #
-        """Pattern Choices"""
+        # Pattern Choices ############################################################################################ #
         pattern_choice = input(
             """
             Please choose from the below list:
@@ -86,14 +78,16 @@ def run(file_name, choice):
         loop = True
         while loop:
             if pattern_choice_col == background_fill:
-                escape = input('The pattern and the background are the same colour\nAre you sure this is what you want?')
+                escape = input('The pattern and the background are the same colour\n'
+                               'Are you sure this is what you want?')
                 if escape.lower() in {'y', 'yes'}:
                     loop = False
                 else:
                     background_fill = input('What colour background do you want?')
                     pattern_choice_col = input('What colour do you want the pattern to be?')
                     if pattern_choice_col == background_fill:
-                        escape = input('The pattern and the background are the same colour\nAre you sure this is what you want?')
+                        escape = input('The pattern and the background are the same colour\n'
+                                       'Are you sure this is what you want?')
                         if escape.lower() in {'y', 'yes'}:
                             loop = False
             else:
