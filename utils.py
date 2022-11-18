@@ -27,7 +27,18 @@ def lsystem(axioms, rules, iterations):
     return axioms
 
 
-def reduce_instructions(x, y, z, mult, constant, sequence, theta, A, dtype):
+def append_instructions(n, c, w, x, y, z, dtype):
+    if dtype in {int, np.int}:
+        a = np.array([cos(n), sin(n)]).astype(int)
+    else:
+        a = np.array([cos(n), sin(n)])
+    x += w * np.dot(a, c)
+    y -= w * np.dot(np.fliplr([a])[0], c)
+    z = np.append(z, [[x, y]], axis=0)
+    return x, y, z
+    
+
+def reduce_instructions(x, y, z, mult, constant, sequence, theta, c, dtype):
     sequence = re.sub('F' * mult[2][0], mult[2][1], sequence)
     sequence = re.sub('F' * mult[1][0], mult[1][1], sequence)
     sequence = re.sub('F' * mult[0][0], mult[0][1], sequence)
@@ -37,27 +48,9 @@ def reduce_instructions(x, y, z, mult, constant, sequence, theta, A, dtype):
     for char in sequence:
         if char == '+':
             n += theta
-        if char == mult[0][1]:
-            a = np.array([cos(n), sin(n)])
-            if dtype in {int, np.int}:
-                a = a.astype(int)
-            x += w[0] * np.dot(a, A)
-            y -= w[0] * np.dot(np.fliplr([a])[0], A)
-            z = np.append(z, [[x, y]], axis=0)
-        if char == mult[1][1]:
-            a = np.array([cos(n), sin(n)])
-            if dtype in {int, np.int}:
-                a = a.astype(int)
-            x += w[1] * np.dot(a, A)
-            y -= w[1] * np.dot(np.fliplr([a])[0], A)
-            z = np.append(z, [[x, y]], axis=0)
-        if char == mult[2][1]:
-            a = np.array([cos(n), sin(n)])
-            if dtype in {int, np.int}:
-                a = a.astype(int)
-            x += w[2] * np.dot(a, A)
-            y -= w[2] * np.dot(np.fliplr([a])[0], A)
-            z = np.append(z, [[x, y]], axis=0)
+        for i in range(len(w)):
+            if char == mult[i][1]:
+                x, y, z = append_instructions(n, c, w[i], x, y, z, dtype)
         if char == '_':
             n -= theta
     print(sequence)
