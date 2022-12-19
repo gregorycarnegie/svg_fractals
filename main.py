@@ -9,17 +9,17 @@ import utils
 
 """DATA"""
 colours = pd.read_excel('DATA.xlsx', sheet_name='Sheet1')
-colour_list = np.array(utils.ratio(colours['Colour Names'], colours['Numbers']))
+colour_list = utils.ratio(colours['Colour Names'], colours['Numbers'])
 colour_names = colours['SVG name']
 patterns = pd.read_excel('DATA.xlsx', sheet_name='Sheet2')
-pattern_list = np.array(utils.ratio(patterns['Pattern'], patterns['Numbers']))
+pattern_list = utils.ratio(patterns['Pattern'], patterns['Numbers'])
 
 length = 1e3
 svg_size_w = svg_size_h = length
 length_array = np.array([1.0] + [length / n for n in range(1, 101)])
 
 
-def run(file_name, choice):
+def run(file_name: str, choice:str):
     file_name = f'svgs\\{file_name}.svg'
     if choice in {'y', 'yes'}:
         dwg = random_fractal(file_name)
@@ -28,7 +28,7 @@ def run(file_name, choice):
     dwg.save()
 
 
-def fractal(file_name):
+def fractal(file_name: str):
     iterations = int(input('How many iterations do you need?'))
     # Canvas
     result = svgwrite.Drawing(file_name, (svg_size_w, svg_size_h), profile='full', debug=True)
@@ -85,7 +85,7 @@ def fractal(file_name):
     return result
 
 
-def random_fractal(file_name):
+def random_fractal(file_name: str):
     random.seed(qr.randint(1, 5_000_000_000))
     # Canvas
     result = svgwrite.Drawing(file_name, (svg_size_w, svg_size_h), profile='full', debug=True)
