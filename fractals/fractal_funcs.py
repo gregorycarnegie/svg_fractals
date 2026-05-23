@@ -10,13 +10,13 @@ LENGTH = 1e3
 SVG_SIZE_W = SVG_SIZE_H = LENGTH
 LENGTH_ARRAY = [LENGTH / n for n in range(1, 101)]
 
-_STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20}
+_STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20, 'sierpinski': 20, 'dragon': 20}
 _PATTERNS = list(_STROKE_DIVISOR.keys())
 
-_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (1, 3)}
+_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (1, 3), 'sierpinski': (3, 6), 'dragon': (8, 12)}
 
 # Iteration range exposed to the UI slider per pattern.
-ITERATION_RANGES = {'hilbert': (1, 6), 'gosper': (1, 4), 'peano': (1, 3), 'moore': (1, 4)}
+ITERATION_RANGES = {'hilbert': (1, 6), 'gosper': (1, 4), 'peano': (1, 3), 'moore': (1, 4), 'sierpinski': (1, 8), 'dragon': (1, 14)}
 
 
 def _random_hex(hue: float | None = None) -> str:
@@ -53,6 +53,10 @@ def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations
         pts = utils.peano(LENGTH, iterations)
     elif pattern == 'moore':
         pts = utils.moore(LENGTH, iterations)
+    elif pattern == 'sierpinski':
+        pts = _center_points(utils.sierpinski_arrowhead(LENGTH, iterations))
+    elif pattern == 'dragon':
+        pts = _center_points(utils.dragon(LENGTH, iterations))
     result.add(result.polyline(points=pts, fill='none', stroke_width=stroke_width, stroke=colour))
 
 

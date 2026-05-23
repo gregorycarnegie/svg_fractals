@@ -71,11 +71,40 @@ def generate_sequence(
     return re.sub(f'[{a}{b}]', '', sequence), np.array([[x, y]])
 
 
+def _turtle(sequence: str, step: float, theta: float, draw_chars: str, start_angle: float = 0.0) -> np.ndarray:
+    x, y = 0.0, 0.0
+    angle = start_angle
+    points = [[x, y]]
+    for ch in sequence:
+        if ch in draw_chars:
+            x += step * np.cos(angle)
+            y += step * np.sin(angle)
+            points.append([x, y])
+        elif ch == '+':
+            angle += theta
+        elif ch == '_':
+            angle -= theta
+    return np.array(points)
+
+
 def hilbert(step_length: int | float, order: int) -> np.ndarray:
     constant = step_length * (pow(0.5, order))
     x, y = step_length * (pow(0.5, order + 1) - 0.5), step_length * (0.5 - pow(0.5, order + 1))
     sequence, z = generate_sequence('A', 'A', 'B', '+BF_AFA_FB+', '_AF+BFB+FA_', x, y, order)
     return reduce_instructions(x, y, z, ((1, 'A'), (2, 'B'), (3, 'C')), constant, sequence, 0.5 * np.pi, (1, 0), int)
+
+
+def sierpinski_arrowhead(step_length: float, order: int) -> np.ndarray:
+    step = step_length / pow(2, order)
+    start_angle = np.pi / 3 if order % 2 else 0.0
+    sequence = lsystem('A', {'A': 'B_A_B', 'B': 'A+B+A'}, order)
+    return _turtle(sequence, step, np.pi / 3, 'AB', start_angle)
+
+
+def dragon(step_length: float, order: int) -> np.ndarray:
+    step = step_length * pow(2, -order / 2)
+    sequence = lsystem('F', {'F': 'F+G', 'G': 'F_G'}, order)
+    return _turtle(sequence, step, np.pi / 2, 'FG')
 
 
 def gosper(step_length: int | float, order: int, x, y) -> np.ndarray:

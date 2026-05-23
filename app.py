@@ -229,6 +229,8 @@ HTML = f"""<!DOCTYPE html>
         <option value="gosper">Gosper</option>
         <option value="peano">Peano</option>
         <option value="moore">Moore</option>
+        <option value="sierpinski">Sierpinski</option>
+        <option value="dragon">Dragon</option>
       </select>
     </div>
 
