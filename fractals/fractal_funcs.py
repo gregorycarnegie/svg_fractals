@@ -1,27 +1,30 @@
+import colorsys
 import random
 import secrets
 
 import svgwrite
 
 from . import utils
-from .data import COLOURS, PATTERNS
 
 LENGTH = 1e3
 SVG_SIZE_W = SVG_SIZE_H = LENGTH
 LENGTH_ARRAY = [LENGTH / n for n in range(1, 101)]
 
 _STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20}
+_PATTERNS = list(_STROKE_DIVISOR.keys())
 
-# Iteration range used by random mode. Gosper (3,3) means always 3.
-_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (0, 3)}
+_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (1, 3)}
 
 # Iteration range exposed to the UI slider per pattern.
 ITERATION_RANGES = {'hilbert': (1, 6), 'gosper': (1, 4), 'peano': (1, 3), 'moore': (1, 4)}
 
-_COLOUR_KEYS = list(COLOURS.keys())
-_COLOUR_WEIGHTS = list(COLOURS.values())
-_PATTERN_KEYS = list(PATTERNS.keys())
-_PATTERN_WEIGHTS = list(PATTERNS.values())
+
+def _random_hex(hue: float | None = None) -> str:
+    h = hue if hue is not None else random.random()
+    s = random.uniform(0.5, 1.0)
+    v = random.uniform(0.35, 0.9)
+    r, g, b = colorsys.hsv_to_rgb(h % 1.0, s, v)
+    return f'#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}'
 
 
 def _make_drawing(file_name: str, background_fill: str) -> svgwrite.Drawing:
@@ -56,11 +59,12 @@ def generate(pattern: str, background: str, colour: str, iterations: int) -> str
 def random_settings() -> dict:
     """Return a random set of fractal settings."""
     random.seed(secrets.randbits(32))
-    background = random.choices(_COLOUR_KEYS, weights=_COLOUR_WEIGHTS)[0]
-    pattern = random.choices(_PATTERN_KEYS, weights=_PATTERN_WEIGHTS)[0]
-    other_colours = [c for c in _COLOUR_KEYS if c != background]
-    other_weights = [COLOURS[c] for c in other_colours]
-    colour = random.choices(other_colours, weights=other_weights)[0]
+    bg_hue = random.random()
+    # Shift hue by 0.3–0.7 so background and pattern colour are always visually distinct
+    pattern_hue = (bg_hue + random.uniform(0.3, 0.7)) % 1.0
+    background = _random_hex(bg_hue)
+    colour = _random_hex(pattern_hue)
+    pattern = random.choice(_PATTERNS)
     lo, hi = _RANDOM_ITERATION_RANGE[pattern]
     iterations = random.randint(lo, hi)
     return {'pattern': pattern, 'background': background, 'colour': colour, 'iterations': iterations}
