@@ -12,8 +12,11 @@ LENGTH_ARRAY = [LENGTH / n for n in range(1, 101)]
 
 _STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20}
 
-# Gosper iterations are fixed; others are (lo, hi) for random.randint
+# Iteration range used by random mode. Gosper (3,3) means always 3.
 _RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (0, 3)}
+
+# Iteration range exposed to the UI slider per pattern.
+ITERATION_RANGES = {'hilbert': (1, 6), 'gosper': (1, 4), 'peano': (1, 3), 'moore': (1, 4)}
 
 _COLOUR_KEYS = list(COLOURS.keys())
 _COLOUR_WEIGHTS = list(COLOURS.values())
@@ -43,6 +46,26 @@ def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations
     result.add(result.polyline(points=pts, fill='none', stroke_width=stroke_width, stroke=colour))
 
 
+def generate(pattern: str, background: str, colour: str, iterations: int) -> str:
+    """Return SVG XML string for the given settings."""
+    dwg = _make_drawing('preview', background)
+    _add_pattern(dwg, pattern, colour, iterations)
+    return dwg.tostring()
+
+
+def random_settings() -> dict:
+    """Return a random set of fractal settings."""
+    random.seed(secrets.randbits(32))
+    background = random.choices(_COLOUR_KEYS, weights=_COLOUR_WEIGHTS)[0]
+    pattern = random.choices(_PATTERN_KEYS, weights=_PATTERN_WEIGHTS)[0]
+    other_colours = [c for c in _COLOUR_KEYS if c != background]
+    other_weights = [COLOURS[c] for c in other_colours]
+    colour = random.choices(other_colours, weights=other_weights)[0]
+    lo, hi = _RANDOM_ITERATION_RANGE[pattern]
+    iterations = random.randint(lo, hi)
+    return {'pattern': pattern, 'background': background, 'colour': colour, 'iterations': iterations}
+
+
 def fractal(file_name: str) -> svgwrite.Drawing:
     iterations = int(input('How many iterations? '))
     background_fill = input('Background colour: ')
@@ -62,18 +85,7 @@ def fractal(file_name: str) -> svgwrite.Drawing:
 
 
 def random_fractal(file_name: str) -> svgwrite.Drawing:
-    random.seed(secrets.randbits(32))
-
-    background_fill = random.choices(_COLOUR_KEYS, weights=_COLOUR_WEIGHTS)[0]
-    pattern_choice = random.choices(_PATTERN_KEYS, weights=_PATTERN_WEIGHTS)[0]
-
-    other_colours = [c for c in _COLOUR_KEYS if c != background_fill]
-    other_weights = [COLOURS[c] for c in other_colours]
-    pattern_colour = random.choices(other_colours, weights=other_weights)[0]
-
-    lo, hi = _RANDOM_ITERATION_RANGE[pattern_choice]
-    iterations = random.randint(lo, hi)
-
-    result = _make_drawing(file_name, background_fill)
-    _add_pattern(result, pattern_choice, pattern_colour, iterations)
+    s = random_settings()
+    result = _make_drawing(file_name, s['background'])
+    _add_pattern(result, s['pattern'], s['colour'], s['iterations'])
     return result

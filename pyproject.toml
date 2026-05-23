@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "Generate SVG artwork from classic space-filling fractals."
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi>=0.136.1",
     "numpy>=2.4.6",
     "svgwrite>=1.4.3",
+    "uvicorn>=0.47.0",
 ]
 
 [dependency-groups]
