@@ -34,6 +34,13 @@ def _make_drawing(file_name: str, background_fill: str) -> svgwrite.Drawing:
     return result
 
 
+def _center_points(pts) -> list:
+    mins = pts.min(axis=0)
+    maxs = pts.max(axis=0)
+    offset = (mins + maxs) / 2
+    return pts - offset
+
+
 def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations: int) -> None:
     if pattern not in _STROKE_DIVISOR:
         raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
@@ -41,7 +48,7 @@ def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations
     if pattern == 'hilbert':
         pts = utils.hilbert(LENGTH, iterations)
     elif pattern == 'gosper':
-        pts = utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0)
+        pts = _center_points(utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0))
     elif pattern == 'peano':
         pts = utils.peano(LENGTH, iterations)
     elif pattern == 'moore':
