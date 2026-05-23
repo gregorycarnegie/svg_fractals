@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.pyo
 
@@ -14,9 +15,6 @@ build/
 
 # Output files
 svgs/*.svg
-
-# Data files
-*.xlsx
 
 # IDE
 .vscode/

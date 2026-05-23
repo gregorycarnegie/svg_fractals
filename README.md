@@ -5,7 +5,7 @@
 [![Output: SVG](https://img.shields.io/badge/output-SVG-brightgreen)](https://www.w3.org/Graphics/SVG/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Generate SVG artwork from classic space-filling fractals. The command-line app can create a chosen pattern with custom colors, or generate a random pattern using weighted color and pattern data.
+Generate SVG artwork from classic space-filling fractals. Choose a pattern, colours, and iteration depth — or hit Randomise and let the generator decide.
 
 ![Example SVG fractal](svgs/example.svg)
 
@@ -16,15 +16,7 @@ Generate SVG artwork from classic space-filling fractals. The command-line app c
 - Moore curve
 - Peano curve
 
-## Requirements
-
-- Python 3.14 or newer
-- `DATA.xlsx` in the repository root for weighted color and pattern data
-- Dependencies listed in `pyproject.toml`
-
 ## Installation
-
-Using uv:
 
 ```powershell
 uv sync
@@ -32,32 +24,44 @@ uv sync
 
 ## Usage
 
-Run the interactive generator:
+### Web UI (recommended)
+
+```powershell
+uv run python app.py
+```
+
+Then open `http://127.0.0.1:8000`. Pick a pattern, adjust colours and iterations, and preview the SVG in real time. Use **Randomise** to generate a random combination, or **Download SVG** to save the result.
+
+### CLI
 
 ```powershell
 uv run python main.py
 ```
 
-Or, if you installed with pip:
+Prompts for a file name and whether to use random mode. SVG files are written to `svgs/`.
+
+### Tests
 
 ```powershell
-python main.py
+uv run pytest
 ```
 
-The script prompts for an output file name and whether to generate a random pattern. Generated SVG files are written to the `svgs/` directory.
+## Project structure
 
-## Project Structure
-
-```text
+```
+app.py                  Web UI (FastAPI)
+main.py                 CLI entry point
 fractals/
-  fractal_funcs.py  Fractal drawing entry points
-  utils.py          L-system and geometry helpers
+  data.py               Weighted colour and pattern tables
+  fractal_funcs.py      Drawing logic and public API
+  utils.py              L-system engine and geometry helpers
+tests/
+  test_fractal_funcs.py Tests for drawing helpers
+  test_utils.py         Tests for L-system and fractal generators
 svgs/
-  example.svg       Example generated output
-main.py             Interactive CLI
-DATA.xlsx           Weighted color and pattern data
+  example.svg           Example output
 ```
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
