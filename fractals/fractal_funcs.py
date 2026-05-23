@@ -1,112 +1,79 @@
 import random
+import secrets
 
-import numpy as np
-import pandas as pd
-import quantumrandom as qr
 import svgwrite
 
 from . import utils
-
-"""DATA"""
-COLOURS = pd.read_excel('DATA.xlsx', sheet_name='Sheet1')
-COLOUR_LIST = utils.ratio(COLOURS['Colour Names'], COLOURS['Numbers'])
-COLOUR_NAMES = COLOURS['SVG name']
-PATTERNS = pd.read_excel('DATA.xlsx', sheet_name='Sheet2')
-PATTERN_LIST = utils.ratio(PATTERNS['Pattern'], PATTERNS['Numbers'])
+from .data import COLOURS, PATTERNS
 
 LENGTH = 1e3
 SVG_SIZE_W = SVG_SIZE_H = LENGTH
-LENGTH_ARRAY = np.array([1.0] + [LENGTH / n for n in range(1, 101)])
+LENGTH_ARRAY = [LENGTH / n for n in range(1, 101)]
 
-def fractal(file_name: str):
-    iterations = int(input('How many iterations do you need?'))
-    # Canvas
+_STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20}
+
+# Gosper iterations are fixed; others are (lo, hi) for random.randint
+_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (0, 3)}
+
+_COLOUR_KEYS = list(COLOURS.keys())
+_COLOUR_WEIGHTS = list(COLOURS.values())
+_PATTERN_KEYS = list(PATTERNS.keys())
+_PATTERN_WEIGHTS = list(PATTERNS.values())
+
+
+def _make_drawing(file_name: str, background_fill: str) -> svgwrite.Drawing:
     result = svgwrite.Drawing(file_name, (SVG_SIZE_W, SVG_SIZE_H), profile='full', debug=True)
     result.viewbox(-SVG_SIZE_W / 2, -SVG_SIZE_H / 2, SVG_SIZE_W, SVG_SIZE_H)
-    # Background
-    background_fill = input('What colour background do you want?')
-    result.add(result.rect(insert=(-LENGTH_ARRAY[2], -LENGTH_ARRAY[2]), size=('100%', '100%'), fill=background_fill))
-    # Pattern Choices
-    pattern_choice = input(
-        """
-        Please choose from the below list:
-        - Hilbert
-        - Gosper
-        - Moore
-        - Peano
-        """
-    ).lower()
-    pattern_choice_col = input('What colour do you want the pattern to be?')
-    loop = True
-    while loop:
-        if pattern_choice_col == background_fill:
-            escape = input('The pattern and the background are the same colour\n'
-                           'Are you sure this is what you want?')
-            if escape.lower() in {'y', 'yes'}:
-                loop = False
-            else:
-                background_fill = input('What colour background do you want?')
-                pattern_choice_col = input('What colour do you want the pattern to be?')
-                if pattern_choice_col == background_fill:
-                    escape = input('The pattern and the background are the same colour\n'
-                                   'Are you sure this is what you want?')
-                    if escape.lower() in {'y', 'yes'}:
-                        loop = False
-        else:
-            loop = False
-
-    if pattern_choice == 'hilbert':
-        pl = result.polyline(points=utils.hilbert(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))), stroke=pattern_choice_col)
-        result.add(pl)
-    elif pattern_choice == 'gosper':
-        pl = result.polyline(points=utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))), stroke=pattern_choice_col)
-        result.add(pl)
-    elif pattern_choice == 'peano':
-        pl = result.polyline(points=utils.peano(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (40 * (iterations + 1))), stroke=pattern_choice_col)
-        result.add(pl)
-    if pattern_choice == 'moore':
-        pl = result.polyline(points=utils.moore(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))), stroke=pattern_choice_col)
-        result.add(pl)
-
+    result.add(result.rect(insert=(-LENGTH_ARRAY[1], -LENGTH_ARRAY[1]), size=('100%', '100%'), fill=background_fill))
     return result
 
-def random_fractal(file_name: str):
-    random.seed(qr.randint(1, 5_000_000_000))
-    # Canvas
-    result = svgwrite.Drawing(file_name, (SVG_SIZE_W, SVG_SIZE_H), profile='full', debug=True)
-    result.viewbox(-SVG_SIZE_W / 2, -SVG_SIZE_H / 2, SVG_SIZE_W, SVG_SIZE_H)
-    # Background
-    background_fill = random.choice(COLOUR_LIST[:-20])
-    result.add(result.rect(insert=(-LENGTH_ARRAY[2], -LENGTH_ARRAY[2]), size=('100%', '100%'), fill=background_fill))
-    # Pattern Choices
-    pattern_choice = random.choice(PATTERN_LIST)
-    pattern_choice_col = [x for x in COLOUR_LIST[:-20] if x != background_fill]
-    if pattern_choice == 'Hilbert':
-        iterations = random.randint(1, 5)
-        pl = result.polyline(points=utils.hilbert(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))),
-                             stroke=random.choice(pattern_choice_col))
-        result.add(pl)
-    elif pattern_choice == 'Gosper':
-        iterations = 3
-        pl = result.polyline(points=utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))),
-                             stroke=random.choice(pattern_choice_col))
-        result.add(pl)
-    elif pattern_choice == 'Peano':
-        iterations = random.randint(1, 3)
-        pl = result.polyline(points=utils.peano(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (40 * (iterations + 1))),
-                             stroke=random.choice(pattern_choice_col))
-        result.add(pl)
-    if pattern_choice == 'Moore':
-        iterations = random.randint(0, 3)
-        pl = result.polyline(points=utils.moore(LENGTH, iterations), fill='none',
-                             stroke_width=int(LENGTH / (20 * (iterations + 1))),
-                             stroke=random.choice(pattern_choice_col))
-        result.add(pl)
+
+def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations: int) -> None:
+    if pattern not in _STROKE_DIVISOR:
+        raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
+    stroke_width = int(LENGTH / (_STROKE_DIVISOR[pattern] * (iterations + 1)))
+    if pattern == 'hilbert':
+        pts = utils.hilbert(LENGTH, iterations)
+    elif pattern == 'gosper':
+        pts = utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0)
+    elif pattern == 'peano':
+        pts = utils.peano(LENGTH, iterations)
+    elif pattern == 'moore':
+        pts = utils.moore(LENGTH, iterations)
+    result.add(result.polyline(points=pts, fill='none', stroke_width=stroke_width, stroke=colour))
+
+
+def fractal(file_name: str) -> svgwrite.Drawing:
+    iterations = int(input('How many iterations? '))
+    background_fill = input('Background colour: ')
+    pattern_choice = input('Pattern (Hilbert / Gosper / Moore / Peano): ').lower()
+    pattern_colour = input('Pattern colour: ')
+
+    while pattern_colour == background_fill:
+        confirm = input('Pattern and background are the same colour. Continue? (y/n): ')
+        if confirm.lower() in {'y', 'yes'}:
+            break
+        background_fill = input('Background colour: ')
+        pattern_colour = input('Pattern colour: ')
+
+    result = _make_drawing(file_name, background_fill)
+    _add_pattern(result, pattern_choice, pattern_colour, iterations)
+    return result
+
+
+def random_fractal(file_name: str) -> svgwrite.Drawing:
+    random.seed(secrets.randbits(32))
+
+    background_fill = random.choices(_COLOUR_KEYS, weights=_COLOUR_WEIGHTS)[0]
+    pattern_choice = random.choices(_PATTERN_KEYS, weights=_PATTERN_WEIGHTS)[0]
+
+    other_colours = [c for c in _COLOUR_KEYS if c != background_fill]
+    other_weights = [COLOURS[c] for c in other_colours]
+    pattern_colour = random.choices(other_colours, weights=other_weights)[0]
+
+    lo, hi = _RANDOM_ITERATION_RANGE[pattern_choice]
+    iterations = random.randint(lo, hi)
+
+    result = _make_drawing(file_name, background_fill)
+    _add_pattern(result, pattern_choice, pattern_colour, iterations)
     return result
