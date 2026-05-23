@@ -1,4 +1,6 @@
 import colorsys
+from functools import lru_cache
+from html import escape
 import random
 import secrets
 
@@ -28,23 +30,27 @@ def _random_hex(hue: float | None = None) -> str:
 
 
 def _make_drawing(file_name: str, background_fill: str) -> svgwrite.Drawing:
-    result = svgwrite.Drawing(file_name, (SVG_SIZE_W, SVG_SIZE_H), profile='full', debug=True)
+    result = svgwrite.Drawing(file_name, (SVG_SIZE_W, SVG_SIZE_H), profile='full', debug=False)
     result.viewbox(-SVG_SIZE_W / 2, -SVG_SIZE_H / 2, SVG_SIZE_W, SVG_SIZE_H)
     result.add(result.rect(insert=(-LENGTH_ARRAY[1], -LENGTH_ARRAY[1]), size=('100%', '100%'), fill=background_fill))
     return result
 
 
-def _center_points(pts) -> list:
+def _center_points(pts):
     mins = pts.min(axis=0)
     maxs = pts.max(axis=0)
     offset = (mins + maxs) / 2
     return pts - offset
 
 
-def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations: int) -> None:
+def _stroke_width(pattern: str, iterations: int) -> int:
     if pattern not in _STROKE_DIVISOR:
         raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
-    stroke_width = int(LENGTH / (_STROKE_DIVISOR[pattern] * (iterations + 1)))
+    return int(LENGTH / (_STROKE_DIVISOR[pattern] * (iterations + 1)))
+
+
+@lru_cache(maxsize=64)
+def _pattern_points(pattern: str, iterations: int):
     if pattern == 'hilbert':
         pts = utils.hilbert(LENGTH, iterations)
     elif pattern == 'gosper':
@@ -57,14 +63,45 @@ def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations
         pts = _center_points(utils.sierpinski_arrowhead(LENGTH, iterations))
     elif pattern == 'dragon':
         pts = _center_points(utils.dragon(LENGTH, iterations))
+    else:
+        raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
+    pts.setflags(write=False)
+    return pts
+
+
+def _format_coord(value: float) -> str:
+    if abs(value) < 1e-12:
+        value = 0.0
+    return format(float(value), '.12g')
+
+
+@lru_cache(maxsize=64)
+def _point_string(pattern: str, iterations: int) -> str:
+    return ' '.join(f'{_format_coord(x)},{_format_coord(y)}' for x, y in _pattern_points(pattern, iterations))
+
+
+def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations: int) -> None:
+    stroke_width = _stroke_width(pattern, iterations)
+    pts = _pattern_points(pattern, iterations)
     result.add(result.polyline(points=pts, fill='none', stroke_width=stroke_width, stroke=colour))
 
 
 def generate(pattern: str, background: str, colour: str, iterations: int) -> str:
     """Return SVG XML string for the given settings."""
-    dwg = _make_drawing('preview', background)
-    _add_pattern(dwg, pattern, colour, iterations)
-    return dwg.tostring()
+    stroke_width = _stroke_width(pattern, iterations)
+    points = _point_string(pattern, iterations)
+    background = escape(background, quote=True)
+    colour = escape(colour, quote=True)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{_format_coord(SVG_SIZE_W)}" height="{_format_coord(SVG_SIZE_H)}" '
+        f'viewBox="{_format_coord(-SVG_SIZE_W / 2)} {_format_coord(-SVG_SIZE_H / 2)} '
+        f'{_format_coord(SVG_SIZE_W)} {_format_coord(SVG_SIZE_H)}">'
+        f'<rect x="{_format_coord(-LENGTH_ARRAY[1])}" y="{_format_coord(-LENGTH_ARRAY[1])}" '
+        f'width="100%" height="100%" fill="{background}" />'
+        f'<polyline points="{points}" fill="none" stroke="{colour}" stroke-width="{stroke_width}" />'
+        f'</svg>'
+    )
 
 
 def random_settings() -> dict:

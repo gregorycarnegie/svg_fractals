@@ -312,6 +312,19 @@ HTML = f"""<!DOCTYPE html>
     document.getElementById('btn-dl').disabled = false;
   }}
 
+  function syncCurrentSvg() {{
+    const svg = document.querySelector('#svg-wrap svg');
+    if (svg) currentSvg = svg.outerHTML;
+  }}
+
+  function applyPreviewColours() {{
+    const svg = document.querySelector('#svg-wrap svg');
+    if (!svg) return;
+    svg.querySelector('rect')?.setAttribute('fill', document.getElementById('background').value);
+    svg.querySelector('polyline')?.setAttribute('stroke', document.getElementById('colour').value);
+    syncCurrentSvg();
+  }}
+
   function setLoading(on) {{
     document.getElementById('spinner').classList.toggle('active', on);
   }}
@@ -374,20 +387,14 @@ HTML = f"""<!DOCTYPE html>
   );
   document.getElementById('iterations').addEventListener('change', generate);
 
-  let colTimer;
-  function debouncedGenerate() {{
-    clearTimeout(colTimer);
-    colTimer = setTimeout(generate, 350);
-  }}
-
   document.getElementById('background').addEventListener('input', e => {{
     document.getElementById('bg-hex').textContent = e.target.value;
-    debouncedGenerate();
+    applyPreviewColours();
   }});
 
   document.getElementById('colour').addEventListener('input', e => {{
     document.getElementById('col-hex').textContent = e.target.value;
-    debouncedGenerate();
+    applyPreviewColours();
   }});
 </script>
 

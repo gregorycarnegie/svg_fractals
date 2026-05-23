@@ -3,6 +3,9 @@ import re
 import numpy as np
 
 
+_FULL_TURN = 2 * np.pi
+
+
 def lsystem(axioms: str, rules: dict, iterations: int) -> str:
     for _ in range(iterations):
         axioms = ''.join(rules.get(axiom, axiom) for axiom in axioms)
@@ -42,18 +45,32 @@ def reduce_instructions(
     for i in range(2, -1, -1):
         sequence = re.sub('F' * mult[i][0], mult[i][1], sequence)
 
-    w = constant * np.array([mult[0][0], mult[1][0], mult[2][0]])
+    widths = {char: constant * length for length, char in mult}
+    points = np.empty((len(z) + sum(sequence.count(char) for char in widths), 2), dtype=float)
+    points[:len(z)] = z
+    point_index = len(z)
 
-    n = 0
+    vectors = _reduce_vectors(theta, c, dtype)
+    direction = 0
+    angle = 0.0
+
     for char in sequence:
         if char == '+':
-            n += theta
-        for i in range(len(w)):
-            if char == mult[i][1]:
-                x, y, z = append_instructions(n, c, w[i], x, y, z, dtype)
-        if char == '_':
-            n -= theta
-    return z
+            direction = (direction + 1) % len(vectors) if vectors is not None else direction
+            angle += theta
+        elif char == '_':
+            direction = (direction - 1) % len(vectors) if vectors is not None else direction
+            angle -= theta
+        elif char in widths:
+            if vectors is None:
+                dx, dy = _reduce_vector(angle, c, dtype)
+            else:
+                dx, dy = vectors[direction]
+            x += widths[char] * dx
+            y += widths[char] * dy
+            points[point_index] = [x, y]
+            point_index += 1
+    return points[:point_index]
 
 
 def generate_sequence(
@@ -71,20 +88,72 @@ def generate_sequence(
     return re.sub(f'[{a}{b}]', '', sequence), np.array([[x, y]])
 
 
+def _direction_count(theta: float) -> int | None:
+    count = _FULL_TURN / theta
+    rounded = round(float(count))
+    if rounded > 0 and np.isclose(count, rounded):
+        return rounded
+    return None
+
+
+def _reduce_vector(angle: float, c, dtype: type) -> tuple[float, float]:
+    if c[0]:
+        dx, dy = np.cos(angle), -np.sin(angle)
+    else:
+        dx, dy = np.sin(angle), -np.cos(angle)
+    if dtype in {int, np.int_}:
+        return float(round(dx)), float(round(dy))
+    return float(dx), float(dy)
+
+
+def _reduce_vectors(theta: float, c, dtype: type) -> tuple[tuple[float, float], ...] | None:
+    count = _direction_count(theta)
+    if count is None:
+        return None
+    angles = np.arange(count) * theta
+    if c[0]:
+        vectors = np.column_stack((np.cos(angles), -np.sin(angles)))
+    else:
+        vectors = np.column_stack((np.sin(angles), -np.cos(angles)))
+    if dtype in {int, np.int_}:
+        vectors = np.rint(vectors)
+    return tuple((float(dx), float(dy)) for dx, dy in vectors)
+
+
+def _turtle_vectors(theta: float, start_angle: float) -> tuple[tuple[float, float], ...] | None:
+    count = _direction_count(theta)
+    if count is None:
+        return None
+    angles = start_angle + np.arange(count) * theta
+    return tuple((float(dx), float(dy)) for dx, dy in np.column_stack((np.cos(angles), np.sin(angles))))
+
+
 def _turtle(sequence: str, step: float, theta: float, draw_chars: str, start_angle: float = 0.0) -> np.ndarray:
     x, y = 0.0, 0.0
     angle = start_angle
-    points = [[x, y]]
+    draw_set = set(draw_chars)
+    points = np.empty((sum(ch in draw_set for ch in sequence) + 1, 2), dtype=float)
+    points[0] = [x, y]
+    point_index = 1
+    vectors = _turtle_vectors(theta, start_angle)
+    direction = 0
     for ch in sequence:
-        if ch in draw_chars:
-            x += step * np.cos(angle)
-            y += step * np.sin(angle)
-            points.append([x, y])
+        if ch in draw_set:
+            if vectors is None:
+                dx, dy = np.cos(angle), np.sin(angle)
+            else:
+                dx, dy = vectors[direction]
+            x += step * dx
+            y += step * dy
+            points[point_index] = [x, y]
+            point_index += 1
         elif ch == '+':
+            direction = (direction + 1) % len(vectors) if vectors is not None else direction
             angle += theta
         elif ch == '_':
+            direction = (direction - 1) % len(vectors) if vectors is not None else direction
             angle -= theta
-    return np.array(points)
+    return points[:point_index]
 
 
 def hilbert(step_length: int | float, order: int) -> np.ndarray:
