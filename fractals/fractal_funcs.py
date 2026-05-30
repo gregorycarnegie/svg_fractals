@@ -12,13 +12,34 @@ LENGTH = 1e3
 SVG_SIZE_W = SVG_SIZE_H = LENGTH
 LENGTH_ARRAY = [LENGTH / n for n in range(1, 101)]
 
-_STROKE_DIVISOR = {'hilbert': 20, 'gosper': 20, 'peano': 40, 'moore': 20, 'sierpinski': 20, 'dragon': 20}
+_STROKE_DIVISOR = {
+    "hilbert": 20,
+    "gosper": 20,
+    "peano": 40,
+    "moore": 20,
+    "sierpinski": 20,
+    "dragon": 20,
+}
 _PATTERNS = list(_STROKE_DIVISOR.keys())
 
-_RANDOM_ITERATION_RANGE = {'hilbert': (1, 5), 'gosper': (3, 3), 'peano': (1, 3), 'moore': (1, 3), 'sierpinski': (3, 6), 'dragon': (8, 12)}
+_RANDOM_ITERATION_RANGE = {
+    "hilbert": (1, 5),
+    "gosper": (3, 3),
+    "peano": (1, 3),
+    "moore": (1, 3),
+    "sierpinski": (3, 6),
+    "dragon": (8, 12),
+}
 
 # Iteration range exposed to the UI slider per pattern.
-ITERATION_RANGES = {'hilbert': (1, 6), 'gosper': (1, 4), 'peano': (1, 3), 'moore': (1, 4), 'sierpinski': (1, 8), 'dragon': (1, 14)}
+ITERATION_RANGES = {
+    "hilbert": (1, 6),
+    "gosper": (1, 4),
+    "peano": (1, 3),
+    "moore": (1, 4),
+    "sierpinski": (1, 8),
+    "dragon": (1, 14),
+}
 
 
 def _random_hex(hue: float | None = None) -> str:
@@ -26,13 +47,21 @@ def _random_hex(hue: float | None = None) -> str:
     s = random.uniform(0.5, 1.0)
     v = random.uniform(0.35, 0.9)
     r, g, b = colorsys.hsv_to_rgb(h % 1.0, s, v)
-    return f'#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}'
+    return f"#{round(r * 255):02x}{round(g * 255):02x}{round(b * 255):02x}"
 
 
 def _make_drawing(file_name: str, background_fill: str) -> svgwrite.Drawing:
-    result = svgwrite.Drawing(file_name, (SVG_SIZE_W, SVG_SIZE_H), profile='full', debug=False)
+    result = svgwrite.Drawing(
+        file_name, (SVG_SIZE_W, SVG_SIZE_H), profile="full", debug=False
+    )
     result.viewbox(-SVG_SIZE_W / 2, -SVG_SIZE_H / 2, SVG_SIZE_W, SVG_SIZE_H)
-    result.add(result.rect(insert=(-LENGTH_ARRAY[1], -LENGTH_ARRAY[1]), size=('100%', '100%'), fill=background_fill))
+    result.add(
+        result.rect(
+            insert=(-LENGTH_ARRAY[1], -LENGTH_ARRAY[1]),
+            size=("100%", "100%"),
+            fill=background_fill,
+        )
+    )
     return result
 
 
@@ -45,26 +74,32 @@ def _center_points(pts):
 
 def _stroke_width(pattern: str, iterations: int) -> int:
     if pattern not in _STROKE_DIVISOR:
-        raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
+        raise ValueError(
+            f"Unknown pattern {pattern!r}. Choose from: {', '.join(_STROKE_DIVISOR)}"
+        )
     return int(LENGTH / (_STROKE_DIVISOR[pattern] * (iterations + 1)))
 
 
 @lru_cache(maxsize=64)
 def _pattern_points(pattern: str, iterations: int):
-    if pattern == 'hilbert':
+    if pattern == "hilbert":
         pts = utils.hilbert(LENGTH, iterations)
-    elif pattern == 'gosper':
-        pts = _center_points(utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0))
-    elif pattern == 'peano':
+    elif pattern == "gosper":
+        pts = _center_points(
+            utils.gosper(5 * LENGTH / 4, iterations, 5 * LENGTH / 4, 0)
+        )
+    elif pattern == "peano":
         pts = utils.peano(LENGTH, iterations)
-    elif pattern == 'moore':
+    elif pattern == "moore":
         pts = utils.moore(LENGTH, iterations)
-    elif pattern == 'sierpinski':
+    elif pattern == "sierpinski":
         pts = _center_points(utils.sierpinski_arrowhead(LENGTH, iterations))
-    elif pattern == 'dragon':
+    elif pattern == "dragon":
         pts = _center_points(utils.dragon(LENGTH, iterations))
     else:
-        raise ValueError(f'Unknown pattern {pattern!r}. Choose from: {", ".join(_STROKE_DIVISOR)}')
+        raise ValueError(
+            f"Unknown pattern {pattern!r}. Choose from: {', '.join(_STROKE_DIVISOR)}"
+        )
     pts.setflags(write=False)
     return pts
 
@@ -72,18 +107,27 @@ def _pattern_points(pattern: str, iterations: int):
 def _format_coord(value: float) -> str:
     if abs(value) < 1e-12:
         value = 0.0
-    return format(float(value), '.12g')
+    return format(float(value), ".12g")
 
 
 @lru_cache(maxsize=64)
 def _point_string(pattern: str, iterations: int) -> str:
-    return ' '.join(f'{_format_coord(x)},{_format_coord(y)}' for x, y in _pattern_points(pattern, iterations))
+    return " ".join(
+        f"{_format_coord(x)},{_format_coord(y)}"
+        for x, y in _pattern_points(pattern, iterations)
+    )
 
 
-def _add_pattern(result: svgwrite.Drawing, pattern: str, colour: str, iterations: int) -> None:
+def _add_pattern(
+    result: svgwrite.Drawing, pattern: str, colour: str, iterations: int
+) -> None:
     stroke_width = _stroke_width(pattern, iterations)
     pts = _pattern_points(pattern, iterations)
-    result.add(result.polyline(points=pts, fill='none', stroke_width=stroke_width, stroke=colour))
+    result.add(
+        result.polyline(
+            points=pts, fill="none", stroke_width=stroke_width, stroke=colour
+        )
+    )
 
 
 def generate(pattern: str, background: str, colour: str, iterations: int) -> str:
@@ -100,7 +144,7 @@ def generate(pattern: str, background: str, colour: str, iterations: int) -> str
         f'<rect x="{_format_coord(-LENGTH_ARRAY[1])}" y="{_format_coord(-LENGTH_ARRAY[1])}" '
         f'width="100%" height="100%" fill="{background}" />'
         f'<polyline points="{points}" fill="none" stroke="{colour}" stroke-width="{stroke_width}" />'
-        f'</svg>'
+        f"</svg>"
     )
 
 
@@ -115,21 +159,26 @@ def random_settings() -> dict:
     pattern = random.choice(_PATTERNS)
     lo, hi = _RANDOM_ITERATION_RANGE[pattern]
     iterations = random.randint(lo, hi)
-    return {'pattern': pattern, 'background': background, 'colour': colour, 'iterations': iterations}
+    return {
+        "pattern": pattern,
+        "background": background,
+        "colour": colour,
+        "iterations": iterations,
+    }
 
 
 def fractal(file_name: str) -> svgwrite.Drawing:
-    iterations = int(input('How many iterations? '))
-    background_fill = input('Background colour: ')
-    pattern_choice = input('Pattern (Hilbert / Gosper / Moore / Peano): ').lower()
-    pattern_colour = input('Pattern colour: ')
+    iterations = int(input("How many iterations? "))
+    background_fill = input("Background colour: ")
+    pattern_choice = input("Pattern (Hilbert / Gosper / Moore / Peano): ").lower()
+    pattern_colour = input("Pattern colour: ")
 
     while pattern_colour == background_fill:
-        confirm = input('Pattern and background are the same colour. Continue? (y/n): ')
-        if confirm.lower() in {'y', 'yes'}:
+        confirm = input("Pattern and background are the same colour. Continue? (y/n): ")
+        if confirm.lower() in {"y", "yes"}:
             break
-        background_fill = input('Background colour: ')
-        pattern_colour = input('Pattern colour: ')
+        background_fill = input("Background colour: ")
+        pattern_colour = input("Pattern colour: ")
 
     result = _make_drawing(file_name, background_fill)
     _add_pattern(result, pattern_choice, pattern_colour, iterations)
@@ -138,6 +187,6 @@ def fractal(file_name: str) -> svgwrite.Drawing:
 
 def random_fractal(file_name: str) -> svgwrite.Drawing:
     s = random_settings()
-    result = _make_drawing(file_name, s['background'])
-    _add_pattern(result, s['pattern'], s['colour'], s['iterations'])
+    result = _make_drawing(file_name, s["background"])
+    _add_pattern(result, s["pattern"], s["colour"], s["iterations"])
     return result

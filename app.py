@@ -21,20 +21,23 @@ class GenerateRequest(BaseModel):
     iterations: int
 
 
-@app.get('/', response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 def index():
     return HTML
 
 
-@app.post('/generate')
+@app.post("/generate")
 def api_generate(req: GenerateRequest):
-    return {'svg': generate(req.pattern, req.background, req.colour, req.iterations)}
+    return {"svg": generate(req.pattern, req.background, req.colour, req.iterations)}
 
 
-@app.get('/randomise')
+@app.get("/randomise")
 def api_randomise():
     s = random_settings()
-    return {**s, 'svg': generate(s['pattern'], s['background'], s['colour'], s['iterations'])}
+    return {
+        **s,
+        "svg": generate(s["pattern"], s["background"], s["colour"], s["iterations"]),
+    }
 
 
 # Iteration ranges as JSON for the JS side
@@ -402,5 +405,5 @@ HTML = f"""<!DOCTYPE html>
 </html>
 """
 
-if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=8000, reload=False)
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
